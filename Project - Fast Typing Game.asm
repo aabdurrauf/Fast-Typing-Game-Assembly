@@ -25,7 +25,9 @@ ORG 100h
         DB 'processor%', 10
         DB 'software%', '$'
     c1  DB '3'
+    c2  DB '1'
     ply DB 'Player '
+
 .CODE    
     MOV AX, @DATA
     MOV DS, AX
@@ -57,24 +59,34 @@ ORG 100h
     
     start_game:
     MOV DI, 0		; player turn (0-2)
+    
+    next_player:
+    CALL game
+    CMP DI, 3		; if 3 players had played the game, stop
+    JNE next_player	; and show the result. if not then continue to play
+    
+    
+RET
+    
+    game PROC
     MOV BX, 0		; to print 'Player '
+    CALL new_line
+        
     print_ply:
     LEA SI, ply
     MOV DL, [SI+BX]
     MOV AH, 02h
     INT 21h		; print "Player ..." (1, 2, 3)
     CMP [SI+BX], ' '
-    JE end_print_ply:
+    JE print_ply_num:
     INC BX
     LOOP print_ply
     
-    end_print_ply:
-    MOV CX, DI
-    ADD CL, '1'
-    MOV DL, CL
+    print_ply_num:
+    MOV DL, c2
     MOV AH, 02h
     INT 21h
-    INC DI
+    INC c2
     CALL new_line    
     
     print_word:
@@ -108,27 +120,34 @@ ORG 100h
     
     counter_321:
     CALL new_line	; call new line proc
+    MOV BL, c1
     MOV CX, 3
+    
     count:
     PUSH CX
-    MOV CX, 0Fh
-    MOV DX, 4240h
-    MOV AH, 86h
-    INT 15h
-    MOV DL, c1
+    
+    MOV DL, BL
     MOV AH, 02h
     INT 21h		; 3... 2... 1...
     MOV DL, 13		; 
     MOV AH, 02h		;
     INT 21h		; set back pointer text to beginning
-    DEC c1
+    DEC BL
+    MOV CX, 0Fh		; set interval 1 second
+    MOV DX, 4240h	;
+    MOV AH, 86h		;
+    INT 15h		
+    
     POP CX
     LOOP count
+    MOV DL, ' '
+    MOV AH, 02h
+    INT 21h
     
     CALL new_line
     XOR AX, AX
     
-    MOV BX, 0		; 
+    MOV BX, 0
     MOV AH, 00h  	; starting the timer       
     INT 1AH		; interrupts to get system time
     PUSH DX
@@ -150,7 +169,10 @@ ORG 100h
     JMP wait_keyboard_in
     
     game_over:
-    MOV AX, 1234h
+    MOV [DI+800h], -1	; if you lost your time will be -1
+    INC DI
+    POP AX
+    JMP next
     
     you_won:
     MOV AH, 00h  	; interrupts to get system time        
@@ -159,14 +181,11 @@ ORG 100h
     SUB DX, AX		; contains microseconds time
     
     MOV [DI+800h], DX	; save the time
+    INC DI
     
-    CMP DI, 3		; if 3 players had played the game stop
-    JNE start_game	; and show the result. if not then continue to play
-    ; error too far jump
-    
-    
-    
- RET
+    next:
+    RET
+    game ENDP
  
     ; check the input with the word
     check_word PROC
