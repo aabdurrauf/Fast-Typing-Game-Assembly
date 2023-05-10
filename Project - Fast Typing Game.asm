@@ -30,6 +30,7 @@ ORG 100h
     ply DB 'Player $'
     pnt DB ' point: $'
     win_txt DB ' won the game!$'
+    tie_txt DB 'Game ended with no winner$'
     win DB ?
 
 .CODE    
@@ -125,7 +126,8 @@ ORG 100h
 
     print_winner:
     LEA BX, win
-    
+    CMP SI, 1h
+    JE print_tie
     CALL new_line	; print "Player "
     LEA DX, ply
     MOV AH, 09h
@@ -138,7 +140,15 @@ ORG 100h
     LEA DX, win_txt	; print " won the game!"
     MOV AH, 09h
     INT 21h
+    JMP end_of_code
     
+    print_tie:
+    CALL new_line	; print "Player "
+    LEA DX, tie_txt
+    MOV AH, 09h
+    INT 21h
+    
+    end_of_code:
 RET
     
     
